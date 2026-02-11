@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  sku          String    @unique
+  name         String
+  warehouseQty Int       @default(0)
+  amazonQty    Int       @default(0)
+  mlQty        Int       @default(0)
+  amazonAsin   String?
+  mlItemId     String?
+  lastSyncAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  status    String
+  message   String?
+  details   String?
+  createdAt DateTime @default(now())
+}
