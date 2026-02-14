@@ -71,8 +71,9 @@ export async function syncAllInventory(): Promise<SyncResult> {
         }
 
         // Fetch current ML inventory if item ID is set
+        // Soporta productos simples y con variantes
         if (product.mlItemId) {
-          const mlData = await getMLInventory(product.mlItemId);
+          const mlData = await getMLInventory(product.mlItemId, product.mlVariationId);
           if (mlData) {
             currentMLQty = mlData.quantity;
           }
@@ -97,8 +98,9 @@ export async function syncAllInventory(): Promise<SyncResult> {
         }
 
         // Actualizar ML con la nueva cantidad
+        // Soporta productos simples y con variantes
         if (product.mlItemId) {
-          const mlSuccess = await updateMLInventory(product.mlItemId, newQty);
+          const mlSuccess = await updateMLInventory(product.mlItemId, newQty, product.mlVariationId);
           productResult.mlUpdated = mlSuccess;
         }
 

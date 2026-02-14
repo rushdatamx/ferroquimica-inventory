@@ -8,17 +8,18 @@ datasource db {
 }
 
 model Product {
-  id           String    @id @default(cuid())
-  sku          String    @unique
-  name         String
-  warehouseQty Int       @default(0)
-  amazonQty    Int       @default(0)
-  mlQty        Int       @default(0)
-  amazonAsin   String?
-  mlItemId     String?
-  lastSyncAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  sku           String    @unique
+  name          String
+  warehouseQty  Int       @default(0)
+  amazonQty     Int       @default(0)
+  mlQty         Int       @default(0)
+  amazonAsin    String?
+  mlItemId      String?
+  mlVariationId String?   // Para productos con variantes en ML (ej: colores)
+  lastSyncAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model SyncLog {

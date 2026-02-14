@@ -6,6 +6,22 @@ interface MLTokens {
   expires_in: number;
 }
 
+interface MLVariation {
+  id: number;
+  available_quantity: number;
+  sold_quantity: number;
+  attribute_combinations: {
+    name: string;
+    value_name: string;
+  }[];
+}
+
+interface MLItem {
+  id: string;
+  available_quantity: number;
+  variations?: MLVariation[];
+}
+
 let cachedMLToken: { token: string; refreshToken: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
@@ -54,9 +70,18 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// Get item details including inventory from Mercado Libre
+/**
+ * Get inventory from Mercado Libre
+ * Soporta 2 casos:
+ * 1. Producto simple (sin variantes): usa available_quantity del item
+ * 2. Producto con variantes (colores, tallas): usa available_quantity de la variación específica
+ *
+ * @param itemId - ID de la publicación (ej: MLM3510860724)
+ * @param variationId - ID de la variación (opcional, ej: 183256741)
+ */
 export async function getMLInventory(
-  itemId: string
+  itemId: string,
+  variationId?: string | null
 ): Promise<{ quantity: number } | null> {
   try {
     const accessToken = await getAccessToken();
@@ -76,8 +101,23 @@ export async function getMLInventory(
       return null;
     }
 
-    const data = await response.json();
+    const data: MLItem = await response.json();
 
+    // Caso 1: Producto con variantes - buscar la variación específica
+    if (variationId && data.variations && data.variations.length > 0) {
+      const variation = data.variations.find(
+        (v) => v.id.toString() === variationId
+      );
+      if (variation) {
+        return {
+          quantity: variation.available_quantity || 0,
+        };
+      }
+      console.error(`Variation ${variationId} not found in item ${itemId}`);
+      return null;
+    }
+
+    // Caso 2: Producto simple - usar available_quantity del item
     return {
       quantity: data.available_quantity || 0,
     };
@@ -87,13 +127,42 @@ export async function getMLInventory(
   }
 }
 
-// Update inventory on Mercado Libre
+/**
+ * Update inventory on Mercado Libre
+ * Soporta 2 casos:
+ * 1. Producto simple: actualiza available_quantity del item
+ * 2. Producto con variantes: actualiza available_quantity de la variación específica
+ *
+ * @param itemId - ID de la publicación (ej: MLM3510860724)
+ * @param quantity - Nueva cantidad
+ * @param variationId - ID de la variación (opcional, ej: 183256741)
+ */
 export async function updateMLInventory(
   itemId: string,
-  quantity: number
+  quantity: number,
+  variationId?: string | null
 ): Promise<boolean> {
   try {
     const accessToken = await getAccessToken();
+
+    let body: Record<string, unknown>;
+
+    // Caso 1: Producto con variantes - actualizar la variación específica
+    if (variationId) {
+      body = {
+        variations: [
+          {
+            id: parseInt(variationId),
+            available_quantity: quantity,
+          },
+        ],
+      };
+    } else {
+      // Caso 2: Producto simple
+      body = {
+        available_quantity: quantity,
+      };
+    }
 
     const response = await fetch(
       `https://api.mercadolibre.com/items/${itemId}`,
@@ -103,9 +172,7 @@ export async function updateMLInventory(
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          available_quantity: quantity,
-        }),
+        body: JSON.stringify(body),
       }
     );
 
